@@ -1,0 +1,591 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今天聽什麼？音樂轉盤</title>
+
+  <style>
+    /* ===== 重要參數 ===== */
+    :root {
+      --background: #171923;
+      --panel: #242735;
+      --main-color: #c5ed75;
+      --text-color: #f4f2ec;
+      --muted-color: #a6a8b4;
+      --wheel-size: 360px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 30px 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: var(--background);
+      color: var(--text-color);
+      font-family: Arial, "Noto Sans TC", sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 580px;
+      padding: 28px;
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: 0 15px 50px #0005;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      margin: 0 0 30px;
+      color: var(--muted-color);
+      font-size: 14px;
+    }
+
+    /* ===== 轉盤區域 ===== */
+
+    .wheel-area {
+      position: relative;
+      width: var(--wheel-size);
+      max-width: 100%;
+      aspect-ratio: 1;
+      margin: 0 auto 28px;
+    }
+
+    /* 上方指針 */
+    .pointer {
+      position: absolute;
+      z-index: 5;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 30px solid var(--main-color);
+      filter: drop-shadow(0 3px 4px #0008);
+    }
+
+    /* 轉盤本體 */
+    #wheel {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 6px solid #f4f2ec;
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 8px 25px #0008;
+
+      /* 旋轉動畫 */
+      transition: transform 5s cubic-bezier(0.12, 0.75, 0.12, 1);
+    }
+
+    /* 文字容器 */
+    #wheelLabels {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* 每個選項的文字 */
+    .wheel-label {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+
+      width: 44%;
+      min-height: 24px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      color: white;
+      font-size: clamp(9px, 2.8vw, 13px);
+      font-weight: bold;
+      text-shadow: 0 1px 4px #000;
+      white-space: nowrap;
+    }
+
+    /* 中央圓點 */
+    .wheel-center {
+      position: absolute;
+      z-index: 4;
+      top: 50%;
+      left: 50%;
+      width: 58px;
+      height: 58px;
+      border: 5px solid white;
+      border-radius: 50%;
+      background: #20232e;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 2px 8px #0006;
+      pointer-events: none;
+    }
+
+    /* ===== 結果區 ===== */
+
+    .result-box {
+      padding: 22px 16px;
+      margin-bottom: 20px;
+      border-radius: 16px;
+      background: #191c27;
+    }
+
+    .result-title {
+      color: var(--muted-color);
+      font-size: 14px;
+      margin: 0 0 10px;
+    }
+
+    #result {
+      min-height: 42px;
+      margin: 0;
+      color: var(--main-color);
+      font-size: 28px;
+      font-weight: bold;
+      overflow-wrap: anywhere;
+    }
+
+    #message {
+      min-height: 22px;
+      margin: 10px 0 0;
+      color: var(--muted-color);
+      font-size: 13px;
+    }
+
+    /* ===== 按鈕 ===== */
+
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      background: var(--main-color);
+      color: #20251b;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #d9f69d;
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ===== 輸入區 ===== */
+
+    .input-area {
+      margin-top: 28px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 160px;
+      padding: 14px;
+      border: 2px solid #424655;
+      border-radius: 12px;
+      background: #191c27;
+      color: white;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.8;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--main-color);
+    }
+
+    .hint {
+      color: var(--muted-color);
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 8px 0 0;
+    }
+
+    @media (max-width: 420px) {
+      .container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      #result {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="container">
+
+    <h1>🎵 今天聽什麼？</h1>
+    <p class="subtitle">讓音樂轉盤決定今天的播放清單</p>
+
+    <!-- 轉盤 -->
+    <div class="wheel-area">
+
+      <!-- 固定指針 -->
+      <div class="pointer"></div>
+
+      <!-- 轉盤本體 -->
+      <div id="wheel">
+        <div id="wheelLabels"></div>
+      </div>
+
+      <!-- 中央裝飾 -->
+      <div class="wheel-center">♫</div>
+
+    </div>
+
+    <!-- 抽籤結果 -->
+    <section class="result-box" aria-live="polite">
+      <p class="result-title">✨ 今天就聽這個！</p>
+      <p id="result">準備好抽籤了嗎？</p>
+      <p id="message">按下按鈕，讓音樂帶你走。</p>
+    </section>
+
+    <!-- 抽籤按鈕 -->
+    <button id="spinButton" type="button">
+      🎧 快去聽！
+    </button>
+
+    <!-- 選項輸入 -->
+    <div class="input-area">
+      <label for="options">🎼 自訂音樂清單</label>
+
+      <textarea id="options">溫室雜草
+館青
+草東
+糜先生
+美秀
+上山
+hue
+deca joins</textarea>
+
+      <p class="hint">
+        每行一個選項，空白行和完全相同的重複選項會自動忽略。
+        修改清單後，轉盤會自動更新。
+      </p>
+    </div>
+
+  </main>
+
+  <script>
+    // ==================================
+    // 1. 重要參數
+    // ==================================
+
+    const SPIN_DURATION = 5000; // 旋轉時間：5 秒
+    const EXTRA_TURNS = 5;      // 額外完整旋轉圈數
+
+    // 轉盤顏色
+    const COLORS = [
+      "#e76f51",
+      "#e9c46a",
+      "#2a9d8f",
+      "#457b9d",
+      "#9b5de5",
+      "#f15bb5",
+      "#00bbf9",
+      "#90be6d",
+      "#f8961e",
+      "#577590",
+      "#f9844a",
+      "#43aa8b"
+    ];
+
+    // ==================================
+    // 2. 取得 HTML 元素
+    // ==================================
+
+    const optionsInput = document.getElementById("options");
+    const spinButton = document.getElementById("spinButton");
+
+    const wheel = document.getElementById("wheel");
+    const wheelLabels = document.getElementById("wheelLabels");
+
+    const resultElement = document.getElementById("result");
+    const messageElement = document.getElementById("message");
+
+    // ==================================
+    // 3. 轉盤狀態
+    // ==================================
+
+    let rotation = 0;
+    let isSpinning = false;
+    let spinTimer = null;
+
+    // ==================================
+    // 4. 取得有效選項
+    // ==================================
+
+    function getOptions() {
+
+      // 依照換行切分文字
+      const lines = optionsInput.value.split(/\r?\n/);
+
+      // 去除前後空白、空白行及完全相同的重複項目
+      const options = [...new Set(
+        lines
+          .map(item => item.trim())
+          .filter(item => item !== "")
+      )];
+
+      return options;
+    }
+
+    // ==================================
+    // 5. 建立轉盤
+    // ==================================
+
+    function createWheel() {
+
+      const options = getOptions();
+      const count = options.length;
+
+      // 清除舊文字
+      wheelLabels.replaceChildren();
+
+      // 沒有有效選項
+      if (count === 0) {
+
+        wheel.style.background = "#424655";
+        spinButton.disabled = true;
+
+        return;
+      }
+
+      spinButton.disabled = false;
+
+      // 每個格子的角度
+      const angle = 360 / count;
+
+      // 建立每個扇形的背景
+      const gradients = options.map((option, index) => {
+
+        const startAngle = index * angle;
+        const endAngle = (index + 1) * angle;
+
+        const color = COLORS[index % COLORS.length];
+
+        return `${color} ${startAngle}deg ${endAngle}deg`;
+      });
+
+      wheel.style.background =
+        `conic-gradient(${gradients.join(",")})`;
+
+      // 取得轉盤目前實際尺寸
+      const wheelSize = wheel.clientWidth;
+
+      // 文字距離圓心的距離
+      const labelRadius = wheelSize * 0.31;
+
+      // 建立文字
+      options.forEach((option, index) => {
+
+        const label = document.createElement("div");
+
+        label.className = "wheel-label";
+        label.textContent = option;
+
+        // 每個扇形的正中央角度
+        const middleAngle = index * angle + angle / 2;
+
+        // 將文字放在扇形中央
+        // 先旋轉到指定角度，再往外移動
+        // 最後反向旋轉，讓文字保持水平
+        label.style.transform = `
+          translate(-50%, -50%)
+          rotate(${middleAngle}deg)
+          translateY(-${labelRadius}px)
+          rotate(-${middleAngle}deg)
+        `;
+
+        wheelLabels.appendChild(label);
+      });
+    }
+
+    // ==================================
+    // 6. 執行轉盤
+    // ==================================
+
+    function spinWheel() {
+
+      // 防止動畫尚未結束就重複點擊
+      if (isSpinning) return;
+
+      const options = getOptions();
+
+      // 清單為空
+      if (options.length === 0) {
+
+        resultElement.textContent = "尚未選出";
+        messageElement.textContent =
+          "請先輸入至少一個選項";
+
+        return;
+      }
+
+      isSpinning = true;
+      spinButton.disabled = true;
+
+      resultElement.textContent = "轉盤旋轉中...";
+      messageElement.textContent = "正在尋找今天的音樂！";
+
+      const count = options.length;
+
+      // 每格的角度
+      const angle = 360 / count;
+
+      // 均勻隨機選擇一個選項
+      const randomIndex = Math.floor(
+        Math.random() * count
+      );
+
+      // 中獎格子的中央角度
+      const targetAngle = randomIndex * angle + angle / 2;
+
+      // 指針位於正上方，角度為 0 度
+      const pointerAngle = 0;
+
+      // 計算轉盤需要旋轉到的位置
+      const stopAngle = (
+        pointerAngle - targetAngle + 360
+      ) % 360;
+
+      // 計算還需要旋轉多少角度
+      const currentAngle = rotation % 360;
+
+      const additionalAngle = (
+        stopAngle - currentAngle + 360
+      ) % 360;
+
+      // 加上完整旋轉圈數
+      const finalRotation =
+        rotation +
+        EXTRA_TURNS * 360 +
+        additionalAngle;
+
+      rotation = finalRotation;
+
+      // 設定動畫時間
+      wheel.style.transition =
+        `transform ${SPIN_DURATION}ms cubic-bezier(0.12, 0.75, 0.12, 1)`;
+
+      // 開始旋轉
+      wheel.style.transform =
+        `rotate(${rotation}deg)`;
+
+      // 動畫結束後顯示結果
+      spinTimer = setTimeout(function () {
+
+        resultElement.textContent = options[randomIndex];
+
+        messageElement.textContent =
+          "🎶 今天就來聽聽看吧！";
+
+        isSpinning = false;
+        spinButton.disabled = false;
+
+        spinTimer = null;
+
+      }, SPIN_DURATION);
+    }
+
+    // ==================================
+    // 7. 修改清單時更新轉盤
+    // ==================================
+
+    optionsInput.addEventListener("input", function () {
+
+      // 如果正在旋轉，取消舊動畫
+      if (spinTimer !== null) {
+        clearTimeout(spinTimer);
+        spinTimer = null;
+      }
+
+      isSpinning = false;
+
+      // 重設旋轉角度
+      rotation = 0;
+
+      wheel.style.transition = "none";
+      wheel.style.transform = "rotate(0deg)";
+
+      // 重新建立轉盤
+      createWheel();
+
+      // 清除舊結果
+      resultElement.textContent = "準備好抽籤了嗎？";
+
+      // 更新提示
+      if (getOptions().length === 0) {
+
+        resultElement.textContent = "尚未選出";
+
+        messageElement.textContent =
+          "請先輸入至少一個選項";
+
+      } else {
+
+        messageElement.textContent =
+          "清單已更新，可以重新抽籤！";
+      }
+    });
+
+    // ==================================
+    // 8. 綁定按鈕
+    // ==================================
+
+    spinButton.addEventListener("click", spinWheel);
+
+    // ==================================
+    // 9. 初始化
+    // ==================================
+
+    createWheel();
+
+  </script>
+
+</body>
+</html>
